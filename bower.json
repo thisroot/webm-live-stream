@@ -1,0 +1,11 @@
+{
+  "name": "rtmp-server",
+  "description": "",
+  "main": "app.js",
+  "authors": [
+    "Egor Mikheev"
+  ],
+  "license": "MIT",
+  "homepage": "",
+  "private": true
+}

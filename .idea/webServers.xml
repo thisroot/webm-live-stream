@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="26fa75bc-a86c-4284-8d3b-f84cdf127372" name="5.101.78.155" url="http://5.101.78.155">
+        <fileTransfer host="5.101.78.155" port="22" rootFolder="/var/www/rtmp-server" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
