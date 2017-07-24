@@ -7,13 +7,12 @@ import serve from 'koa-static'
 import range from 'koa-range';
 
 const app = new Koa();
-//const io = new IO();
+
 const router = new Router();
 
-//io.attach(app);
+//require('./utils/signaling-server.js')(app);
 
-
-require('./utils/signaling-server.js')(app);
+require('./utils/recordwebm/signaling-server.js')(app);
 
 app
     .use(serve('./public'))
@@ -24,6 +23,11 @@ app
             html: 'handlebars'
         }
     }));
+
+router.get('/', (ctx) => {
+    return ctx.render('recwebm.html', {title: "record webm with m3u8"});
+});
+
 
 router.get('/streamrec', (ctx) => {
     return ctx.render('streamrec.html', {title: "Streamrec"});

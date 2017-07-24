@@ -24,6 +24,8 @@ function writeToDiskInternal(file, callback) {
         fileID = 2,
         fileBuffer;
 
+
+
     if (fs.existsSync(filePath)) {
         fs.unlink(filePath);
     }
@@ -34,7 +36,6 @@ function writeToDiskInternal(file, callback) {
 
     fs.writeFile(filePath, fileBuffer, function(error) {
         if (error) throw error;
-
         callback();
     });
 }

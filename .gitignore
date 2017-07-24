@@ -1,0 +1,16 @@
+node_modules/*
+.idea/vcs.xml
+public/components/timesync/
+public/js/
+uploads/
+.babelrc
+.bower.json
+.npmignore
+HISTORY.md
+LICENSE
+README.md
+docs/
+examples/
+package.json
+server/
+src/

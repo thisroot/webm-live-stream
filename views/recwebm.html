@@ -1,0 +1,201 @@
+<!doctype>
+<html>
+<head>
+    <title>MediaRecorder to RTMP Demo</title>
+    <!--<script src="/socket.io/socket.io.js"></script>-->
+
+    <script src="/components/socket.io-client/dist/socket.io.js"></script>
+    <script src="/components/timesync/dist/timesync.js"></script>
+</head>
+<body style="max-width:800px;height:100%;margin:auto;">
+<h1>
+    MediaRecorder to RTMP Demo
+</h1>
+<label for="option_width">Size:</label>
+<input type="text" id="option_width" value="480"/> &times;
+<input type="text" id="option_height" value="360"/>
+<br>
+
+<br>
+<button id="button_start">Start streaming</button>
+<button id="button_stop">Stop streaming</button>
+<hr/>
+<div>
+    <p id="output_message"></p>
+    <video id="output_video" autoplay=true></video>
+</div>
+<hr/>
+<textarea readonly="true" id="output_console" cols=91 rows=5>
+</textarea>
+
+<script>
+
+    function fail(str) {
+        alert(str + "\nPlease download the latest version of Firefox!");
+        location.replace('http://mozilla.org/firefox');
+    }
+
+    var output_console = document.getElementById('output_console'),
+        output_message = document.getElementById('output_message'),
+        output_video = document.getElementById('output_video'),
+
+        option_width = document.getElementById('option_width'),
+        option_height = document.getElementById('option_height'),
+        button_start = document.getElementById('button_start'),
+        button_stop = document.getElementById('button_stop'),
+        height = option_height.value,
+        width = option_width.value;
+
+
+    option_height.onchange = option_height.onkeyup = function () {
+        height = 1 * this.value;
+    }
+    option_width.onchange = option_width.onkeyup = function () {
+        width = 1 * this.value;
+    }
+    button_start.onclick = requestMedia;
+    button_stop.onclick = stopMedia;
+
+    function video_show(stream) {
+        if (window.URL) {
+            output_video.src = window.URL.createObjectURL(stream);
+        } else {
+            output_video.src = stream;
+        }
+
+        output_video.setAttribute('muted', true);
+        output_video.addEventListener("loadedmetadata", function (e) {
+            output_message.innerHTML = "Local video source size:" + output_video.videoWidth + "x" + output_video.videoHeight;
+        }, false);
+    }
+
+    function show_output(str) {
+        output_console.value += "\n" + str;
+        output_console.scrollTop = output_console.scrollHeight;
+    }
+
+
+    navigator.getUserMedia = (navigator.getUserMedia ||
+        navigator.mozGetUserMedia ||
+        navigator.msGetUserMedia ||
+        navigator.webkitGetUserMedia);
+    if (!navigator.getUserMedia) {
+        fail('No getUserMedia() available.');
+    }
+    if (!MediaRecorder) {
+        fail('No MediaRecorder available.');
+    }
+
+    var mediaRecorder;
+    var socket = io();
+
+    var ts = timesync.create({
+        server: socket,
+        delay: 10000
+    });
+
+    ts.send = function (socket, data) {
+        socket.emit('timesync', data);
+    };
+
+    socket.on('timesync', function (data) {
+        ts.receive(null, data);
+        // Create a new JavaScript Date object based on the timestamp
+        // multiplied by 1000 so that the argument is in milliseconds, not seconds.
+        var date = new Date(data.timestamp);
+        // Hours part from the timestamp
+        var hours = date.getHours();
+        // Minutes part from the timestamp
+        var minutes = "0" + date.getMinutes();
+        // Seconds part from the timestamp
+        var seconds = "0" + date.getSeconds();
+
+        var formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
+
+        console.log('timesync', ts.now(), formattedTime, );
+    });
+
+
+    socket.on('message', function (m) {
+        console.log('recv server message', m);
+        show_output('SERVER:' + m);
+    });
+    socket.on('fatal', function (m) {
+        show_output('ERROR: unexpected:' + m);
+        alert('Error:' + m);
+        mediaRecorder.stop();
+        //should reload?
+    });
+    socket.on('ffmpeg_stderr', function (m) {
+        show_output('FFMPEG:' + m);
+    });
+    socket.on('disconnect', function () {
+        show_output('ERROR: server disconnected!');
+        mediaRecorder.stop();
+    });
+
+    var chunk = 0;
+    var chunktimes = [];
+    function onSuccess(stream) {
+        video_show(stream);
+        socket.emit('start', 'start');
+
+        var chunkdur = 9000;
+
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.start(chunkdur);
+
+        mediaRecorder.onstop = function (e) {
+
+            if (stream) {
+                stream.getTracks().forEach(function (track) { track.stop(); });
+            }
+
+            mediaRecorder.ondataavailable = function (e) {
+                return;
+            }
+        };
+
+        mediaRecorder.ondataavailable = function (e) {
+            console.log(e);
+            chunktimes.push(e.timeStamp);
+
+            socket.emit("binarystream", {
+                user: e.user = "bilbobeggins",
+                room: e.room = "qwerty",
+                data: e.data,
+                timezone: e.timezone = new Date().getTimezoneOffset(),
+                timenow: e.timenow = ts.now(),
+                timecode: e.timecode,
+                timestamp: e.timeStamp,
+                timechunk: e.timechunk = (chunktimes.length < 2)?e.timeStamp:chunktimes[chunk] - chunktimes[chunk -1],
+                chunk: e.chunc = chunk + 1,
+                chunkmaxdur: e.chunkmaxdur = chunkdur
+            });
+
+            chunk++;
+        }
+    }
+
+    function onError(err) {
+        console.log('The following error occured: ' + err);
+        show_output('Local getUserMedia ERROR:' + err);
+    }
+
+    function requestMedia() {
+        var constraints = {
+            audio: true,
+            video: {
+                width: {min: width, ideal: width, max: width},
+                height: {min: height, ideal: height, max: height},
+            }
+        };
+        navigator.getUserMedia(constraints, onSuccess, onError);
+    }
+
+    function stopMedia() {
+        mediaRecorder.stop();
+    }
+</script>
+</body>
+</html>
